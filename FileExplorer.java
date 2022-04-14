@@ -3,16 +3,18 @@ package FileExplorer;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.*;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.event.TreeSelectionListener;
 import javax.swing.filechooser.FileSystemView;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.table.DefaultTableModel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -25,12 +27,11 @@ public class FileExplorer extends JPanel {
     FileSystemView fileSystemView;
     Desktop desktop;
 
-//    JPanel navigation;
     JPanel navigation;
     JTree tree;
     JTable table;
     JScrollPane treeScroll, tableScroll;
-    JButton bOpenFile, bNewFile, bPrev, bNext;
+    JButton bOpenFile, bNewFile, bPrev, bNext, bDeleteFile, bCopy, bPaste;
 
     DefaultTreeModel treeModel;
     FileTableModel tableModel;
@@ -38,6 +39,7 @@ public class FileExplorer extends JPanel {
     File selectedDirectory;
     File selectedFileInTable;
     File currentDirectory;
+    File copiedFile;
 
     ListSelectionListener tableModelListener;
     ButtonAction buttonAction;
@@ -83,8 +85,18 @@ public class FileExplorer extends JPanel {
         bOpenFile = new JButton("Open");
         bOpenFile.addActionListener(buttonAction);
 
+        bDeleteFile = new JButton("Delete");
+        bDeleteFile.addActionListener(buttonAction);
+
+        bCopy = new JButton("Copy");
+        bCopy.addActionListener(buttonAction);
+
+        bPaste = new JButton("Paste");
+        bPaste.addActionListener(buttonAction);
+
         navigation.add(bPrev); navigation.add(bNext);
         navigation.add(bNewFile); navigation.add(bOpenFile);
+        navigation.add(bDeleteFile); navigation.add(bCopy); navigation.add(bPaste);
 
 //  Tree
         tree = new JTree();
@@ -161,7 +173,7 @@ public class FileExplorer extends JPanel {
         System.out.println(file);
         tree.setSelectionRow(-1);
         selectedDirectory = null;
-        selectedFileInTable = file;
+        selectedFileInTable = null;
         setTableData(file);
     }
 
@@ -197,7 +209,7 @@ public class FileExplorer extends JPanel {
 
         SwingWorker<Void, File> worker = new SwingWorker<>() {
             @Override
-            protected Void doInBackground() throws Exception {
+            protected Void doInBackground() {
                 File file = (File) node.getUserObject();
                 if (file.isDirectory()) {
                     File[] files = fileSystemView.getFiles(file, true);
@@ -276,18 +288,64 @@ public class FileExplorer extends JPanel {
         setTableData(file);
     }
 
+    void deleteFile() {
+        System.out.println(selectedFileInTable);
+        if(selectedFileInTable == null) {
+            showError("Have no file selected");
+            return;
+        }
+        if(JOptionPane.showConfirmDialog(this, "Are you sure ?") == JOptionPane.OK_OPTION) {
+            if(selectedFileInTable.delete()) {
+                setTableData(currentDirectory);
+            } else {
+                showError("Cannot delete file");
+            }
+        }
+    }
+
+    void copyFile() {
+        if(selectedFileInTable == null) {
+            showError("Have no file selected");
+            return;
+        }
+        copiedFile = selectedFileInTable;
+        showError("Copy successful");
+    }
+
+    void pasteFile() {
+        if(copiedFile == null) {
+            showError("Have no file copied");
+            return;
+        }
+        try {
+            Files.copy(copiedFile.toPath(), fileSystemView.createFileObject(currentDirectory,  copiedFile.getName()).toPath());
+            setTableData(currentDirectory);
+            showError("Paste successful");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+//        fileSystemView.createFileObject(currentDirectory, copiedFile.getName());
+//        setTableData(currentDirectory);
+    }
+
     class ButtonAction implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            if(e.getActionCommand() == "New") {
+            if(e.getActionCommand().equals("New")) {
                 String fileName = JOptionPane.showInputDialog("Enter file name: ");
                 newFile(fileName);
-            } else if(e.getActionCommand() == "Open") {
+            } else if(e.getActionCommand().equals("Open")) {
                 openFile();
-            } else if(e.getActionCommand() == "Prev") {
+            } else if(e.getActionCommand().equals("Delete")) {
+                deleteFile();
+            } else if(e.getActionCommand().equals("Prev")) {
                 gotoPrevFile();
-            } else if(e.getActionCommand() == "Next") {
+            } else if(e.getActionCommand().equals("Next")) {
                 gotoNextFile();
+            } else if(e.getActionCommand().equals("Copy")) {
+                copyFile();
+            } else if(e.getActionCommand().equals("Paste")) {
+                pasteFile();
             }
         }
     }
@@ -313,9 +371,9 @@ public class FileExplorer extends JPanel {
 
 class FileTreeCellRenderer extends DefaultTreeCellRenderer {
 
-    private FileSystemView fileSystemView;
+    final private FileSystemView fileSystemView;
 
-    private JLabel label;
+    private final JLabel label;
 
     FileTreeCellRenderer() {
         label = new JLabel();
@@ -333,23 +391,23 @@ class FileTreeCellRenderer extends DefaultTreeCellRenderer {
         int row,
         boolean hasFocus) {
 
-        return super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
-//        DefaultMutableTreeNode node = (DefaultMutableTreeNode) value;
-//        File file = (File)node.getUserObject();
-//        if(file == null) return super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
-//        label.setIcon(fileSystemView.getSystemIcon(file));
-//        label.setText(fileSystemView.getSystemDisplayName(file));
-//        label.setToolTipText(file.getPath());
-//
-//        if (selected) {
-//            label.setBackground(backgroundSelectionColor);
-//            label.setForeground(textSelectionColor);
-//        } else {
-//            label.setBackground(backgroundNonSelectionColor);
-//            label.setForeground(textNonSelectionColor);
-//        }
-//
-//        return label;
+//        return super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) value;
+        File file = (File)node.getUserObject();
+        if(file == null) return super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
+        label.setIcon(fileSystemView.getSystemIcon(file));
+        label.setText(fileSystemView.getSystemDisplayName(file));
+        label.setToolTipText(file.getPath());
+
+        if (selected) {
+            label.setBackground(backgroundSelectionColor);
+            label.setForeground(textSelectionColor);
+        } else {
+            label.setBackground(backgroundNonSelectionColor);
+            label.setForeground(textNonSelectionColor);
+        }
+
+        return label;
     }
 }
 
@@ -398,31 +456,23 @@ class FileTableModel extends AbstractTableModel {
     @Override
     public Object getValueAt(int row, int column) {
         File file = files[row];
-        switch (column) {
-            case 0:
-                return fileSystemView.getSystemIcon(file);
-            case 1:
-                return fileSystemView.getSystemDisplayName(file);
-            case 2:
-                return file.getAbsolutePath();
-            case 3:
-                return file.lastModified();
-        }
-        return "";
+        return switch (column) {
+            case 0 -> fileSystemView.getSystemIcon(file);
+            case 1 -> fileSystemView.getSystemDisplayName(file);
+            case 2 -> file.getAbsolutePath();
+            case 3 -> file.lastModified();
+            default -> "";
+        };
     }
 
     @Override
     public Class<?> getColumnClass(int column) {
-        switch (column) {
-            case 0:
-                return ImageIcon.class;
-            case 1:
-                return String.class;
-            case 2:
-                return String.class;
-            case 3:
-                return Date.class;
-        }
-        return String.class;
+        return switch (column) {
+            case 0 -> ImageIcon.class;
+            case 1 -> String.class;
+            case 2 -> String.class;
+            case 3 -> Date.class;
+            default -> String.class;
+        };
     }
 }
