@@ -15,8 +15,7 @@ import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.*;
 import java.util.List;
 
 public class FileExplorer extends JPanel {
@@ -32,6 +31,7 @@ public class FileExplorer extends JPanel {
     JTable table;
     JScrollPane treeScroll, tableScroll;
     JButton bOpenFile, bNewFile, bPrev, bNext, bDeleteFile, bCopy, bPaste;
+    JTextArea bFind;
 
     DefaultTreeModel treeModel;
     FileTableModel tableModel;
@@ -69,7 +69,7 @@ public class FileExplorer extends JPanel {
 
         bPrev = new JButton();
         try {
-            Image imgPrev = ImageIO.read(getClass().getResource("arrowLeft.png"));
+            Image imgPrev = ImageIO.read(getClass().getResource("./arrowLeft.png"));
             bPrev.setIcon(new ImageIcon(imgPrev.getScaledInstance(20, 20, 1)));
             bPrev.setOpaque(true);
             bPrev.setActionCommand("Prev");
@@ -80,7 +80,7 @@ public class FileExplorer extends JPanel {
 
 //        bNext = new JButton();
 //        try {
-//            Image imgPrev = ImageIO.read(getClass().getResource("arrowRight.png"));
+//            Image imgPrev = ImageIO.read(getClass().getResource("./arrowRight.png"));
 //            bNext.setIcon(new ImageIcon(imgPrev.getScaledInstance(20, 20, 1)));
 //            bNext.setOpaque(true);
 //            bNext.setActionCommand("Next");
@@ -104,6 +104,19 @@ public class FileExplorer extends JPanel {
         bPaste = new JButton("Paste");
         bPaste.addActionListener(buttonAction);
 
+        bFind = new JTextArea();
+        bFind.setLineWrap(false);
+        bFind.setPreferredSize(new Dimension((int) (WIDTH * 0.25), (int) bPaste.getPreferredSize().getHeight()));
+        bFind.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if(e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    findFiles(bFind.getText());
+                    return;
+                }
+            }
+        });
+
         navigation.add(bPrev);
 //        navigation.add(bNext);
         navigation.add(bNewFile);
@@ -111,6 +124,7 @@ public class FileExplorer extends JPanel {
         navigation.add(bDeleteFile);
         navigation.add(bCopy);
         navigation.add(bPaste);
+        navigation.add(bFind);
     }
 
     private void initTree() {
@@ -205,9 +219,23 @@ public class FileExplorer extends JPanel {
             if(tableModel == null) {
                 tableModel = new FileTableModel(file);
                 table.setModel(tableModel);
-          }
+            }
             table.getSelectionModel().removeListSelectionListener(tableModelListener);
             tableModel.setFiles(fileSystemView.getFiles(file, true));
+            table.getSelectionModel().addListSelectionListener(tableModelListener);
+            table.setRowHeight(25);
+            table.getColumnModel().getColumn(0).setPreferredWidth(5);
+        });
+    }
+
+    private void setTableData(File[] files) {
+        SwingUtilities.invokeLater(() -> {
+            if(tableModel == null) {
+                tableModel = new FileTableModel(files);
+                table.setModel(tableModel);
+            }
+            table.getSelectionModel().removeListSelectionListener(tableModelListener);
+            tableModel.setFiles(files);
             table.getSelectionModel().addListSelectionListener(tableModelListener);
             table.setRowHeight(25);
             table.getColumnModel().getColumn(0).setPreferredWidth(5);
@@ -342,6 +370,11 @@ public class FileExplorer extends JPanel {
 //        setTableData(currentDirectory);
     }
 
+    void findFiles(String target) {
+        File[] result = (new FindFilesSupporter(target)).findFiles();
+        setTableData(result);
+    }
+
     class ButtonAction implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -361,6 +394,35 @@ public class FileExplorer extends JPanel {
             } else if(e.getActionCommand().equals("Paste")) {
                 pasteFile();
             }
+        }
+    }
+
+    class FindFilesSupporter {
+        Set<File> result;
+        String target;
+        public FindFilesSupporter(String target) {this.target = target;}
+
+        File[] findFiles() {
+            result = new HashSet<>();
+            File[] root = new File[]{new File("D:\\Document")};
+            for (File f : root) {
+                find(f);
+            }
+            return result.toArray(new File[result.size()]);
+        }
+
+        void find(File file) {
+            if(file.isDirectory()) {
+                File[] files = fileSystemView.getFiles(file, true);
+                for (File f : files) {
+                    if (f.isDirectory()) {
+                        find(f);
+                    } else if (f.isFile()) {
+                        if(f.getName().contains(target))
+                            result.add(f);
+                    }
+                }
+            } else { result.add(file); }
         }
     }
 
