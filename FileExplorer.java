@@ -53,7 +53,17 @@ public class FileExplorer extends JPanel {
         fileSystemView = FileSystemView.getFileSystemView();
         desktop = Desktop.getDesktop();
 
-//  Navigation
+        initNavigation();
+        initTree();
+        initTable();
+
+        add(navigation, BorderLayout.NORTH);
+        add(treeScroll, BorderLayout.WEST);
+        add(tableScroll, BorderLayout.EAST);
+    }
+
+    private void initNavigation() {
+        //  Navigation
         navigation = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttonAction = new ButtonAction();
 
@@ -68,16 +78,16 @@ public class FileExplorer extends JPanel {
             bPrevEx.printStackTrace();
         }
 
-        bNext = new JButton();
-        try {
-            Image imgPrev = ImageIO.read(getClass().getResource("arrowRight.png"));
-            bNext.setIcon(new ImageIcon(imgPrev.getScaledInstance(20, 20, 1)));
-            bNext.setOpaque(true);
-            bNext.setActionCommand("Next");
-            bNext.addActionListener(buttonAction);
-        } catch (Exception bPrevEx) {
-            bPrevEx.printStackTrace();
-        }
+//        bNext = new JButton();
+//        try {
+//            Image imgPrev = ImageIO.read(getClass().getResource("arrowRight.png"));
+//            bNext.setIcon(new ImageIcon(imgPrev.getScaledInstance(20, 20, 1)));
+//            bNext.setOpaque(true);
+//            bNext.setActionCommand("Next");
+//            bNext.addActionListener(buttonAction);
+//        } catch (Exception bPrevEx) {
+//            bPrevEx.printStackTrace();
+//        }
 
         bNewFile = new JButton("New");
         bNewFile.addActionListener(buttonAction);
@@ -94,11 +104,17 @@ public class FileExplorer extends JPanel {
         bPaste = new JButton("Paste");
         bPaste.addActionListener(buttonAction);
 
-        navigation.add(bPrev); navigation.add(bNext);
-        navigation.add(bNewFile); navigation.add(bOpenFile);
-        navigation.add(bDeleteFile); navigation.add(bCopy); navigation.add(bPaste);
+        navigation.add(bPrev);
+//        navigation.add(bNext);
+        navigation.add(bNewFile);
+        navigation.add(bOpenFile);
+        navigation.add(bDeleteFile);
+        navigation.add(bCopy);
+        navigation.add(bPaste);
+    }
 
-//  Tree
+    private void initTree() {
+        //  Tree
         tree = new JTree();
         DefaultMutableTreeNode root = new DefaultMutableTreeNode();
         treeModel = new DefaultTreeModel(root);
@@ -133,8 +149,10 @@ public class FileExplorer extends JPanel {
         treeScroll = new JScrollPane(tree);
         Dimension treeSize = new Dimension((int) (WIDTH * 0.4), (int) treeScroll.getPreferredSize().getHeight());
         treeScroll.setPreferredSize(treeSize);
+    }
 
-//  Table
+    private void initTable() {
+        //  Table
         table = new JTable();
 
         tableModelListener = e -> {
@@ -161,12 +179,8 @@ public class FileExplorer extends JPanel {
         table.setShowVerticalLines(false);
 
         tableScroll = new JScrollPane(table);
-        Dimension tableSize = new Dimension((int) (HEIGHT * 0.6), (int) tableScroll.getPreferredSize().getHeight());
-        table.setPreferredSize(new Dimension(tableSize));
-
-        add(navigation, BorderLayout.NORTH);
-        add(treeScroll, BorderLayout.WEST);
-        add(tableScroll, BorderLayout.EAST);
+//        Dimension tableSize = new Dimension((int) (WIDTH * 0.6), (int) table.getHeight());
+//        table.setPreferredSize(new Dimension(tableSize));
     }
 
     private void openDirectoryInTable(File file) {
